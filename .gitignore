@@ -1,3 +1,6 @@
 *.pyc
+.idea/
 old/
 hmmlearn
+edf-viewer
+data/

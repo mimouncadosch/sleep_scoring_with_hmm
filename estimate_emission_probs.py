@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 import edflib
-from dataio import load_signals, get_stages_array
+from dataio import load_signals, get_stages_array, get_signal_frequencies, get_signals
 from epoch import get_epoch_data, number_of_epochs
 from features import get_features
 from estimate_transition_probs import parse_filename
@@ -16,6 +16,7 @@ def estimate_emission_probs(train_data_file, label_file, mute=False):
 
     """
     print "Estimating emission probabilities for file %s" %train_data_file
+
     # 1) Read EDF file and setup
 
     _, _, session_num, _ = parse_filename(label_file)
@@ -28,19 +29,23 @@ def estimate_emission_probs(train_data_file, label_file, mute=False):
     # 7 -> EEG_1 (freq: 125Hz)
     # 8 -> Respiration (freq: 10Hz)
 
-    signal_indices = [5, 7, 8]
+    signal_indices = [5,7]
     # Signal frequencies
-    eogl_f = 50; eeg1_f = 125; resp_f = 10;
-    eogl, eeg1, resp = load_signals(e, signal_indices)
-    num_epochs = number_of_epochs(eeg1, eeg1_f)
+    freqs = get_signal_frequencies(e, signal_indices)
+    signals = get_signals(e, signal_indices)
+    print "Signal frequencies: ", freqs
 
+    num_epochs = number_of_epochs(signals[0], freqs[0])
     print "Number of epochs: %d" %num_epochs
-    num_epochs_verify = number_of_epochs(eogl, eogl_f)
-    assert num_epochs == num_epochs_verify
+
+
+    # Verify length of signals are consistent
+    if len(signal_indices) > 1:
+        num_epochs_verify = number_of_epochs(signals[1], freqs[1])
+        assert num_epochs == num_epochs_verify
 
     # 2) Load epoch labels from labeled data
     stages = get_stages_array(label_file)
-
     assert len(stages) == num_epochs
 
     # 3) Create feature matrices for each hidden state
@@ -48,21 +53,24 @@ def estimate_emission_probs(train_data_file, label_file, mute=False):
 
     # For each epoch in the signal (ei: epoch index)
     for ei in xrange(0, num_epochs):
-        # Retrieve data in ei-th epoch
-        e1  = get_epoch_data(eeg1, eeg1_f, ei, 1, mute)     # EEG 1
-        r   = get_epoch_data(resp, resp_f, ei, 1, mute)     # Respiration
-        eol  = get_epoch_data(eogl, eogl_f, ei, 1, mute)    # EOG Left
 
         # Data label (Wake, NREM, REM)
         label = stages[ei]
 
-        # Extract the features from the data
-        e1_features = get_features(e1, eeg1_f)
-        r_features = get_features(r, resp_f)
-        eogl_features = get_features(eol, eogl_f)
+        # For each signal
+        first_sig = True
+        for sid in range(0, len(signal_indices)):
+            # Retrieve data in ei-th epoch
+            epoch_data = get_epoch_data( signals[sid], freqs[sid], ei, 1, mute )
+            # Extract the features from the data
+            epoch_feats = get_features( epoch_data, freqs[sid])
 
-        # Features is features vector composed of features of many signals stacked together
-        features = np.hstack((e1_features, r_features, eogl_features))
+            # Features is features vector composed of features of many signals stacked together
+            if first_sig is True:
+                features = epoch_feats
+                first_sig = False
+            else:
+                features = np.hstack( (features, epoch_feats) )
 
         if label == 'W':
             if mute is False: print "Epoch has label [Wake]"

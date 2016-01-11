@@ -1,7 +1,9 @@
+from numpy import vstack
 import csv
 
 """
-This file contains functions that read the signal from file.
+This file contains functions that read the signal and signal information from file.
+It also contains functions that modify the signal data in file.
 """
 
 def load_signals(e, signal_indices):
@@ -17,6 +19,25 @@ def load_signals(e, signal_indices):
     # emg 	= e.readSignal(4)
     # temp 	= e.readSignal(5)
     return eog, eeg1, resp
+
+def get_signal_frequencies(e, signal_indices):
+    """Return an array containing the frequencies for the signals with indices given in @signal_indices
+    :param e: the EdfReader object.
+    :param signal_indices: the indices of the signals to retrieve frequencies from.
+    :return: an array with the frequencies of the given signals.
+    """
+    all_freqs = e.getSignalFreqs()
+    return [ int(all_freqs[i]) for i in signal_indices ]
+
+def get_signals(e, signal_indices):
+    """Load an return signals from file
+    :param e: the EdfReader object.
+    :param signal_indices: the indices of the signals to retrieve data from.
+    : return: an array of signal arrays.
+    """
+    # :return data: a numpy array with dimensions (n_signals, n_points), where each row contains the data of a signal in @signal_indices.
+
+    return [e.readSignal(idx) for idx in signal_indices]
 
 def get_signal_freqs(e):
     """Return signal frequences

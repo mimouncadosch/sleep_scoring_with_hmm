@@ -21,6 +21,8 @@ Better features don't work if they don't come from the right data.
 
 4) More sophisticated way of adding signals
 
+5) PCA to determine which features to use
+
 ###Two approaches: increase features, and increase data
 
 ### Increase data:

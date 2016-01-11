@@ -4,7 +4,7 @@ from numpy import arange
 This file contains functions that interact with signal data at the epoch level.
 """
 
-def get_epoch_data(sig, freq, ei, ne, mute=False):
+def get_epoch_data(sig, freq, ei, ne, mute):
     """This function retrieves @ne epochs worth of signal @sig (passed by reference)
     starting at the @ei-th epoch.
     :param signum: the signal number.
@@ -20,7 +20,6 @@ def get_epoch_data(sig, freq, ei, ne, mute=False):
     tot_npoints = npoints * ne
     # Index of point where the epoch starts
     start = ei * npoints
-
     if mute is False: print "Returning signal in epochs [%d -> %d]" %(ei, ei+ne)
 
     return sig[ start : start + tot_npoints]

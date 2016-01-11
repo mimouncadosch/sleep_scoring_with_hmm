@@ -67,7 +67,9 @@ Plan
 
 ### Save parameters as single .npy file: √
 
-### Improve classification accuracy [ see classification.md ] 
+### Improve classification accuracy [ see classification.md ]
+
+
 
 ### Have transition probabilities change with time
 

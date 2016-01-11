@@ -1,7 +1,7 @@
 import os, sys
 import edflib
 import numpy as np
-from dataio import load_signals, get_stages_array
+from dataio import load_signals, get_stages_array, get_signal_frequencies, get_signals
 from epoch import get_epoch_data, number_of_epochs
 from features import get_features
 
@@ -9,31 +9,38 @@ def predict_labels(test_data_file, model_session_num, mute):
 
     # 1) Get data
     e = edflib.EdfReader(test_data_file)
-    signal_indices = [5, 7, 8]
-    # Signal frequencies
-    eogl_f = 50; eeg1_f = 125; resp_f = 10
-    eogl, eeg1, resp = load_signals(e, signal_indices)
-    num_epochs = number_of_epochs(eeg1, eeg1_f)
 
-    first = True
+    signal_indices = [5,7]
+    freqs = get_signal_frequencies(e, signal_indices)
+    signals = get_signals(e, signal_indices)
+
+    print "Signal frequencies: ", freqs
+
+    num_epochs = number_of_epochs(signals[0], freqs[0])
+
+    first_feat = True
+    # Retrieve data in ei-th epoch
     for ei in xrange(0, num_epochs):
-        # Retrieve data in ei-th epoch
-        e1      = get_epoch_data(eeg1, eeg1_f, ei, 1, mute)     # EEG 1
-        r       = get_epoch_data(resp, resp_f, ei, 1, mute)     # Respiration
-        eol     = get_epoch_data(eogl, eogl_f, ei, 1, mute)     # EOG L
-        # Extract the features from the data
 
-        e1_features     = get_features(e1, eeg1_f)
-        r_features      = get_features(r, resp_f)
-        eogl_features   = get_features(eol, eogl_f)
+        # For each signal
+        first_sig = True
+        for sid in range(0, len(signal_indices)):
+            # Retrieve data in ei-th epoch
+            epoch_data = get_epoch_data( signals[sid], freqs[sid], ei, 1, mute )
+            # Extract the features from the data
+            epoch_feats = get_features( epoch_data, freqs[sid])
 
-        # Features is features vector composed of features of many signals stacked together
-        features = np.hstack((e1_features, r_features, eogl_features))
+            # Features is features vector composed of features of many signals stacked together
+            if first_sig is True:
+                features = epoch_feats
+                first_sig = False
+            else:
+                features = np.hstack( (features, epoch_feats) )
 
-        if first is True:
+        if first_feat is True:
             feat_mat = features
-            first = False
-        elif first is not True:
+            first_feat = False
+        else:
             feat_mat = np.vstack( (feat_mat, features) )
 
     # 2) Construct and train model
@@ -63,7 +70,7 @@ def predict_labels(test_data_file, model_session_num, mute):
     model.covars_ = np.array([sigma_w, sigma_n, sigma_r])
 
     # State order: W, N, R
-    start_probs = np.array([0.6, 0.4, 0.0 ])
+    start_probs = np.array([ 0.6, 0.4, 0.0 ])
     assert np.sum(start_probs) == 1
 
     model.startprob_= start_probs
@@ -131,4 +138,3 @@ if __name__ == '__main__':
 
     L = predict_labels(test_data_fname)
     score_model(L, reduced_label_file)
-
