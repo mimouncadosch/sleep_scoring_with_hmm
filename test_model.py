@@ -1,16 +1,15 @@
 import os, sys
 import edflib
 import numpy as np
-from dataio import load_signals, get_stages_array, get_signal_frequencies, get_signals
+from dataio import get_stages_array, get_signal_frequencies, get_signals
 from epoch import get_epoch_data, number_of_epochs
 from features import get_features
 
-def predict_labels(test_data_file, model_session_num, mute):
+def predict_labels(test_data_file, model_session_num, signal_indices, mute):
 
     # 1) Get data
     e = edflib.EdfReader(test_data_file)
 
-    signal_indices = [5,7]
     freqs = get_signal_frequencies(e, signal_indices)
     signals = get_signals(e, signal_indices)
 
@@ -98,24 +97,41 @@ def is_positive_definite(covars):
 
 
 def score_model(L, reduced_label_file):
-
+    """Score the model results
+    :param L: model results
+    :param reduced_label_file: labels
+    """
     stages = get_stages_array(reduced_label_file)
 
     assert len(stages) == len(L)
 
     score = 0
 
-    for i in xrange(0, len(stages)):
-        if L[i] == 0 and stages[i] == 'W':
-            score += 1
-        elif L[i] == 1 and stages[i] == 'N':
-            score += 1
-        elif L[i] == 2 and stages[i] == 'R':
-            score += 1
+    # For definitions, see: https://en.wikipedia.org/wiki/Precision_and_recall
+    states = ['W', 'N', 'R']
+    for sid, state in enumerate(states):
 
-    print "Score: %d / %d = %f %%" %(score, len(stages), round(100*float(score)/len(stages),2))
+        relevant_elements = 0
+        true_positives = 0
+        false_positives = 0
 
-    print np.min(L), np.max(L)
+        for i in range(0, len(stages)):
+            # L[i] represents the items selected by the model
+            # stages[i] represents all the relevant items
+            if stages[i] == state:
+                relevant_elements += 1
+            if L[i] == sid and stages[i] == state:
+                true_positives += 1
+            if L[i] == sid and stages[i] != state:
+                false_positives += 1
+
+        print "***** Scoring state %s *****" %state
+        print "Precision for state [%s]:%.1f%%" % ( state, 100*true_positives / float(true_positives + false_positives ) )
+        print "Recall for state [%s]:%.1f%%" % ( state, 100*true_positives / float(relevant_elements) )
+        print "\n"
+
+
+    print "States labeled: %d - %d" %(np.min(L), np.max(L))
 
 def parse_filename(label_file):
     drive, path_and_file = os.path.splitdrive(label_file)
@@ -128,8 +144,8 @@ def parse_filename(label_file):
 if __name__ == '__main__':
     if len(sys.argv) != 3:
         print "Wrong number of arguments."
-        print "Usage: python predict_sequence.py <test_data_file.edf> <reduced_label_file.csv>"
-        print "Example: python predict_sequence.py ./data/edfs/shhs1-200002.edf ./data/annotations/shhs1-200002-staging-reduced.csv"
+        print "Usage: python test_model.py <test_data_file.edf> <reduced_label_file.csv>"
+        print "Example: python test_model.py ./data/edfs/shhs1-200002.edf ./data/annotations/shhs1-200002-staging-reduced.csv"
 
         sys.exit()
 

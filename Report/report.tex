@@ -1,0 +1,130 @@
+\documentclass[10pt,a4paper]{report}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\author{Mimoun Cadosch Delmar }
+\begin{document}
+\title{Automatic Sleep Staging of Polysomnography Data Using Hidden Markov Models}
+\author{Mimoun Cadosch Delmar}
+\date{January 2016}
+
+\maketitle
+
+
+\section*{ 1. Introduction}
+
+Sleep staging consists of taking data from a polysomnography and labeling the time intervals according to the different possible sleep stages (1, 2, 3, 4 and REM). Sleep staging is an integral part of sleep medicine, as it enables specialists to diagnose different types of sleep disorders. 
+\\\\
+The process of sleep staging is usually done by hand by a qualified technician, taking anywhere from two to three hours depending on the technician’s level of expertise and care. Sleep staging can be viewed as a classification problem. As such, it is one that can benefit from machine learning for a faster and thus less expensive solution. 
+\\\\
+Researchers have studied automated sleep staging in the past \cite{malhotra}, and some have even commercialized automated sleep staging systems \cite{michele}. These systems perform classification, however, based on sets of heuristic rules rather than on supervised machine learning techniques.
+\\\\
+The particular model we have decided to use are Hidden Markov Models. This model seems suitable because in this case, the hidden states are the sleep stages, while the visible states are the different signal values. Additionally, this model seems suitable for the problem at hand given the time-dependent nature of the sleep stages. That is to say, the probability of an interval corresponding to a given stage, is dependent on the sleep stage of the previous interval. For instance, a patient is much likelier to transition from stage 3 to stage 4 than he is from stage 3 to stage 2, as humans tend to follow these stages in their given order.
+
+\section*{2. Process}
+\subsection*{Feature Selection}
+A sample set of polysomnography can have anywhere from four to twelve hours worth of data. The signals provided are EMG, EEG, EKG, air flow, oxygenation, and actigraphy. For simplification purposes, the industry and academic standard is to bin polysomnography data into 30-second intervals called “epochs”. This paper follows such standard and summarizes the data into 30-second-long “epochs”. 
+\\\\
+For each 30-second interval we extract the following features. For each signal (EMG, EEG, EKG, etc.), we take the average value $\mu_{signal}$, standard deviation $\sigma_{signal}$, skewness and kurtosis of the signal. Additionally, we take the minimum and maximum values of the signal. Finally, we convert the signal from the time to the frequency domain, and take the frequencies with the highest and lowest amplitudes as features as well.
+\\\\
+Given that we are dealing with a time series, these features were selected to capture the nature of the data for each epoch. Thus, the feature vector \textbf{v} at a given interval \textit{t} is defined as follows:
+
+\begin{equation}
+\textbf{v}_{t} = \begin{bmatrix}
+							x_{0, t}\\
+							x_{1,t}\\
+							...\\
+							x_{n, t}\\
+							\end{bmatrix}
+\end{equation}
+where $x_{i,t}$ is the value of feature \textit{i} at interval \textit{t}.
+Feature {0} would correspond to the signal mean, feature {1} to the signal standard deviation, and so on.
+\\\\
+The feature vectors are independent given the hidden state. Indeed, the average, variance, and higher-order moments of the signals are different for each sleep stage. And so are the strongest frequencies of the signal at different stages of the sleep. It is precisely on the basis of the relative difference of these signals over the night that the sleep stages are defined. 
+\\\\
+If the features were independent given the hidden state, we could have written: \\
+$$ 
+p(\textbf{v} | z_i) = p(x_0, x_1, ..., x_n | z_i) = p(x_0|z_i) \times p(x_1|z_i) \times ... \times p(x_n|z_i)
+$$
+\\\\
+However, since this is not the case, we are going to have to find a way to model our features. Hence, we make the assumption that given the hidden Markov state, the feature values are distributed roughly in a Gaussian manner. That is to say, in every epoch, the sample features follow a normal distribution. In other words:
+\\
+\begin{equation}
+p( \textbf{v} | z_{i} ) \sim  \mathcal{N}(\mu_{sample}, \sigma^2_{sample})
+\end{equation}
+
+Next, we fit a multivariate normal distribution to all the observations given their hidden state $z_{i}$. \\
+In other words, for each hidden state, find:\\
+
+\begin{equation}
+\mu_{sample} = \begin{bmatrix}
+							\mu_{feature_1}\\
+							\mu_{feature_2}\\
+							...\\
+							\mu_{feature_n}\\
+							\end{bmatrix}
+\end{equation}
+\\
+\begin{equation}
+\Sigma_{sample} = \begin{bmatrix}
+								\sigma_{1,1} & ...& \sigma{_1, n}\\
+								... & \sigma_{i,j} & ...\\
+								\sigma_{n, 1} & .. & \sigma_{n, n}
+								\end{bmatrix}
+\end{equation}
+where: 
+$$ \mu_{Feature_{j}} = \frac{1}{M} \sum_{m=0}^{M} \textbf{v}_{F_{j}, m} $$
+and 
+$ \sigma_{i, j} $ is the covariance between features {i} and {j}.
+\\\\
+Then, we set $\mu_{i} = \mu_{sample}$ and $\sigma_{i} = \sigma_{sample}$. 
+This is the maximum likelihood solution, the parameters $\mu_{i}$ and $\Sigma_{i}$ maximize the likelihood of the observed $\textbf{v}$.
+
+\subsection*{Estimating Transition Probabilities}
+We compute the matrix $\textbf{A}$ of transition probabilities as follows:
+
+\begin{equation}
+\textbf{A}  = [a_{i,j}] \\
+					= p(z_i | z_j) \\
+					= \frac{count(x_i, x_j)}{\Sigma_{x_i} count(x_i, x_j)}
+\end{equation}
+
+\subsection*{Estimating Emission Probabilities}
+As explained above, we model the emission probability $p(\textbf{v} | z_i ) \sim \mathcal{N}(\mu_{sample}, \sigma^2_{sample}$
+
+\section*{3. Solution: The Viterbi Algorithm}
+The Hidden Markov Model (HMM) is a sequence classifier. In other words, the HMM assigns a label or class to each epoch in the sequence of epochs in the polysomnography data. It assigns the labels to the hidden stages, the sleep stages, such that the labels assigned maximize the probability of the values observed. 
+\\\\
+Given the sequence of observations obtained from the training data, the HMM computes the probability distribution over all the possible sequences of labels, and chooses that sequence of labels that maximizes the observations.
+\\\\
+For this purpose, we use the Viterbi algorithm. This algorithm will find the most likely sequence of hidden states. There are many references online that explain this algorithm in detail, and we refer the reader to these. 
+
+\subsection*{Dataset}
+We used the polysomnograph dataset obtained from the National Sleep Research Resource \cite{sleepdata}, and specifically the \textit{Sleep Heart Health Study}. This specific study makes available hundreds of nights of polysomnography. We trained our HMM on the polysomnography dataset from this resource.
+
+\subsection*{Results}
+To simplify our analysis, we classified stages 1, 2, 3 and 4 as N (Non-REM) and REM as R. Using the Viterbi algorithm, we obtained the following results. For the classification of the N label, our system has precision of 90\% and recall of 72\%. Similarly, our system classified the R stage with 70\% precision and 64\% recall.
+
+\subsection*{Conclusion}
+In this study we presented a novel system that performs sleep scoring by using a Hidden Markov Model and the Viterbi algorithm. This system is novel as it learns the scoring from the data, as opposed from previously set heuristics. This model is suitable as it takes into account the time-dependent nature of the sleep stages, and that the sleep stages are "hidden" while the signals are observed.
+\\
+This system could be further refined to classify the intervals into stages 1, 2, 3 and 4 (which in this system are all labeled N). 
+
+\begin{thebibliography}{9}
+\bibitem{malhotra}
+\textit{Performance of an Automated Polysomnography Scoring System Versus
+Computer-Assisted Manual Scoring}, Malhotra et al., SLEEP, 2012
+
+\bibitem{michele}
+\textit{Michele Sleep Scoring} https://michelesleepscoring.com/
+
+\bibitem{sleepdata}
+\textit{National Sleep Research Resource} https://www.sleepdata.org/
+\end{thebibliography}
+
+
+
+
+
+\end{document}

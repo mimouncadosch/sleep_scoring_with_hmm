@@ -1,29 +1,42 @@
 import sys
 from estimate_transition_probs import estimate_transition_probs
 from estimate_emission_probs import estimate_emission_probs
-from predict_sequence import predict_labels, score_model
+from test_model import predict_labels, score_model
+from edflib import EdfReader
 
-def train(label_file, reduced_label_file, train_data_file):
+def train(label_file, reduced_label_file, train_data_file, signal_indices):
     print "Training model"
     estimate_transition_probs(label_file)
-    estimate_emission_probs(train_data_file, reduced_label_file, mute=True)
+    estimate_emission_probs(train_data_file, reduced_label_file, signal_indices, mute=True)
 
-def test(reduced_label_file, test_data_file, model_session_num):
+def test(reduced_label_file, test_data_file, model_session_num, signal_indices):
     print "Testing model with data from session %s" %model_session_num
-    L = predict_labels(test_data_file, model_session_num, mute=True)
+    L = predict_labels(test_data_file, model_session_num, signal_indices, mute=True)
     score_model(L, reduced_label_file)
 
 
 if __name__ == '__main__':
 
+    signal_indices = [5, 6, 7, 8]
+
+    if sys.argv[1] == 'info':
+        sn = sys.argv[2]
+        train_data_file = './data/edfs/shhs1-' + sn + '.edf'
+        e = EdfReader(train_data_file)
+        freqs = e.getSignalFreqs()
+        labels = e.getSignalTextLabels()
+        for i in range(0, len(freqs)):
+            print "%d: %s - %d" %(i, labels[i], freqs[i])
+
     if sys.argv[1] == 'train':
         # print "Usage:"
         # print "python main.py train <label_file.csv> <reduced_label_file.csv> <train_data_file.edf>"
         sn = sys.argv[2]
+
         label_file = './data/annotations/shhs1-' + sn + '-staging.csv'
         reduced_label_file = './data/annotations/shhs1-' + sn + '-staging-reduced.csv'
         train_data_file = './data/edfs/shhs1-' + sn + '.edf'
-        train(label_file, reduced_label_file, train_data_file)
+        train(label_file, reduced_label_file, train_data_file, signal_indices)
 
 
     elif sys.argv[1] == 'test':
@@ -43,5 +56,5 @@ if __name__ == '__main__':
 
         # Test data used for predictions
         test_data_file = './data/edfs/shhs1-' + test_session_num + '.edf'
-        test(reduced_label_file, test_data_file, model_session_num)
+        test(reduced_label_file, test_data_file, model_session_num, signal_indices)
 

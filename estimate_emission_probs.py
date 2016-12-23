@@ -6,7 +6,7 @@ from epoch import get_epoch_data, number_of_epochs
 from features import get_features
 from estimate_transition_probs import parse_filename
 
-def estimate_emission_probs(train_data_file, label_file, mute=False):
+def estimate_emission_probs(train_data_file, label_file, signal_indices, mute=False):
     """
     Estimate the emission probabilities of the hidden states.
     It assumes that each hidden state produces observations following a Gaussian distribution.
@@ -29,7 +29,6 @@ def estimate_emission_probs(train_data_file, label_file, mute=False):
     # 7 -> EEG_1 (freq: 125Hz)
     # 8 -> Respiration (freq: 10Hz)
 
-    signal_indices = [5,7]
     # Signal frequencies
     freqs = get_signal_frequencies(e, signal_indices)
     signals = get_signals(e, signal_indices)

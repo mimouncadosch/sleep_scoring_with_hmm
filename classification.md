@@ -19,9 +19,21 @@ Lessons:
 Accuracy increased from 32% to 74% when adding EMG. 
 Better features don't work if they don't come from the right data.
 
-4) More sophisticated way of adding signals
+4) More sophisticated way of adding signals: √
 
-5) PCA to determine which features to use
+Lessons:
+This makes my life easier in testing different signals
+Less signals produce better data, e.g. [5,7] produce better results than [5,7,8]
+
+5) Compute more sophisticated statistics (precision / recall): √
+Lessons:
+Computing more precision and recall for each state was very insightful, as it confirmed my concern that the model would not be very good at discerning REM from NREM sleep. 
+
+6) Analyze emission distributions
+
+7) Train model with more data
+
+8) PCA to determine which features to use
 
 ###Two approaches: increase features, and increase data
 
